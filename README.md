@@ -22,11 +22,14 @@ on-time performance by route, hour, weekday and stop.
 2. On the Mac, make an SSH key if there isn't one: `ssh-keygen -t ed25519` (press Enter for the defaults),
    then paste the contents of `~/.ssh/id_ed25519.pub` into the provider's "SSH keys" box when creating the server.
 3. From this folder: `./deploy.sh <server IP>`. It installs the logger as a service that starts on boot and
-   restarts itself, a nightly backup (kept 14 days), automatic security updates, and a firewall with only SSH open.
+   restarts itself, a nightly backup (kept 14 days), automatic security updates, key-only SSH, a firewall with
+   only SSH open, and Tailscale (open the login link it prints).
+4. With Tailscale running on the Mac too: `./lockdown.sh occ-logger`. SSH is then closed to the internet and the
+   server has no open ports; it is reachable only over Tailscale as `occ-logger`.
 
 ## Getting the data
 
-`./fetch.sh <server IP>` downloads a copy to `data/occ.sqlite`; then `python3 analyze.py`.
+`./fetch.sh occ-logger` downloads a copy to `data/occ.sqlite`; then `python3 analyze.py`.
 
 ## Data
 

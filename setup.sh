@@ -12,7 +12,13 @@ timedatectl set-timezone America/New_York        # the buses run on Binghamton t
 cp deploy/occ-logger.service deploy/occ-backup.service deploy/occ-backup.timer /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable --now occ-logger.service occ-backup.timer
-ufw allow OpenSSH >/dev/null && ufw --force enable >/dev/null     # only SSH is open
+# SSH with keys only, never passwords
+printf 'PasswordAuthentication no\nKbdInteractiveAuthentication no\nPermitRootLogin prohibit-password\n' > /etc/ssh/sshd_config.d/10-occ.conf
+systemctl reload ssh
+ufw allow OpenSSH >/dev/null && ufw --force enable >/dev/null     # only SSH is open (lockdown.sh closes it later)
+# Tailscale: the private network between the Mac and this server. First run prints a login link to open.
+command -v tailscale >/dev/null || curl -fsSL https://tailscale.com/install.sh | sh
+tailscale status >/dev/null 2>&1 || tailscale up --hostname=occ-logger
 sleep 5
 systemctl --no-pager status occ-logger.service | head -5
 echo "Done. Check data with:  sqlite3 /opt/occ-reliability/data/occ.sqlite 'select count(*) from positions'"
