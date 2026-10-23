@@ -38,3 +38,5 @@ on-time performance by route, hour, weekday and stop.
 | `arrivals` | bus serving a stop: route, direction, stop, timetable time, actual time, delay (min), load |
 | `positions` | bus every 30 s: route, location, last/next stop, the feed's own schedule offset, load |
 | `routes`, `stops` | route names and stop locations (refreshed daily) |
+
+Developed with AI-assisted programming (Claude Code).
