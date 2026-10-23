@@ -40,6 +40,31 @@ def grouped(rows, key):
     return groups
 
 
+def headways(db):
+    """Gaps between buses of the same route at the same stop, actual vs timetable. Riders feel these more than lateness:
+    two buses together then a long gap ("bunching") means long waits even when each bus is only a little late.
+    Expected wait for someone arriving at a random time = E[gap^2] / (2 E[gap])."""
+    from datetime import datetime
+    seq = {}
+    for r in db.execute("SELECT route_id, stop_id, day, scheduled, actual FROM arrivals WHERE abs(delay_min) <= 60 "
+                        "ORDER BY route_id, stop_id, day, actual"):
+        seq.setdefault((r[0], r[1], r[2]), []).append((datetime.fromisoformat(r[3]), datetime.fromisoformat(r[4])))
+    act, sch, bunched = [], [], 0
+    for runs in seq.values():
+        for (s1, a1), (s2, a2) in zip(runs, runs[1:]):
+            planned = (s2 - s1).total_seconds() / 60
+            if not 3 <= planned <= 90:   # same trip seen twice, or a service break
+                continue
+            real = max(0.0, (a2 - a1).total_seconds() / 60)
+            act.append(real)
+            sch.append(planned)
+            bunched += real < 0.25 * planned
+    wait = lambda gaps: round(sum(g * g for g in gaps) / (2 * sum(gaps)), 1) if sum(gaps) else None
+    return {"gaps": len(act), "bunched_pct": pct(bunched, len(act)),
+            "avg_wait_min": wait(act), "avg_wait_if_on_timetable_min": wait(sch),
+            "note": "bunched = a bus arrives less than a quarter of the planned gap after the one before"}
+
+
 def main():
     db = sqlite3.connect(DB)
     db.row_factory = sqlite3.Row
@@ -67,6 +92,7 @@ def main():
                               key=lambda x: -x["median_delay_min"])[:10],
         "crowding": stats([r["delay"] for r in rows if r["capacity"] and r["load"] / r["capacity"] >= 0.8])
                     | {"note": "arrivals with the bus at least 80% full"},
+        "headways": headways(db),
     }
     path = DB.parent / "summary.json"
     path.write_text(json.dumps(out, indent=2))

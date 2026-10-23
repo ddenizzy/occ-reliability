@@ -12,7 +12,8 @@ on-time performance by route, hour, weekday and stop.
   served that stop: the time is recorded with the timetable time for that stop, giving one arrival and its delay.
   Buses whose GPS report is more than 3 minutes old are ignored. Standard library only.
 - `analyze.py` turns the arrivals into `data/summary.json`: on-time %, late %, median and 90th-percentile delay,
-  overall and per route / hour / weekday / stop, and on-time performance when buses are crowded.
+  overall and per route / hour / weekday / stop, on-time performance when buses are crowded, and bus bunching
+  with the average rider wait (actual vs. what the timetable promises).
 - The logger runs on a small always-on server, so the data has no gaps when a laptop sleeps.
 
 ## Server setup (once)
