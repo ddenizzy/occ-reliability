@@ -1,0 +1,7 @@
+[Unit]
+Description=Daily backup of the OCC bus database
+
+[Service]
+Type=oneshot
+User=occ
+ExecStart=/bin/sh -c 'mkdir -p /opt/occ-reliability/backups && sqlite3 /opt/occ-reliability/data/occ.sqlite ".backup /opt/occ-reliability/backups/occ-$$(date +%%F).sqlite" && gzip -f /opt/occ-reliability/backups/occ-$$(date +%%F).sqlite && find /opt/occ-reliability/backups -name "occ-*.sqlite.gz" -mtime +14 -delete'

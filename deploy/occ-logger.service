@@ -1,0 +1,15 @@
+[Unit]
+Description=OCC bus on-time data logger
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=occ
+WorkingDirectory=/opt/occ-reliability
+ExecStart=/usr/bin/python3 /opt/occ-reliability/logger.py
+Restart=always
+RestartSec=20
+Nice=10
+
+[Install]
+WantedBy=multi-user.target
