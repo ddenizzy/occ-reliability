@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS arrivals (
   UNIQUE (vehicle, pattern_stop, scheduled));
 CREATE TABLE IF NOT EXISTS positions (
   ts INTEGER, route_id INTEGER, vehicle TEXT, lat REAL, lng REAL, last_stop INTEGER, next_stop INTEGER,
-  on_schedule INTEGER, load INTEGER);
+  on_schedule INTEGER, load INTEGER, gps_ts REAL);
 CREATE TABLE IF NOT EXISTS routes (id INTEGER PRIMARY KEY, name TEXT, abbr TEXT, color TEXT);
 CREATE TABLE IF NOT EXISTS stops (id INTEGER, route_id INTEGER, name TEXT, lat REAL, lng REAL,
   PRIMARY KEY (id, route_id));
@@ -65,6 +65,8 @@ def main():
     DB.parent.mkdir(exist_ok=True)
     db = sqlite3.connect(DB)
     db.executescript(SCHEMA)
+    if "gps_ts" not in [c[1] for c in db.execute("PRAGMA table_info(positions)")]:   # databases from before gps_ts
+        db.execute("ALTER TABLE positions ADD COLUMN gps_ts REAL")
     seen = {}       # vehicle -> {"last": pattern stop id, "sched": {pattern stop id: timetable text}}
     ref_day = None
     while True:
@@ -78,9 +80,9 @@ def main():
                 if not v.get("inService") or now - (v.get("receiveTime") or 0) / 1000 > STALE:
                     continue
                 vid, ps = str(v.get("equipmentID")), v.get("lastPatternStopID")
-                db.execute("INSERT INTO positions VALUES (?,?,?,?,?,?,?,?,?)",
+                db.execute("INSERT INTO positions VALUES (?,?,?,?,?,?,?,?,?,?)",
                            (int(now), v["routeID"], vid, v["lat"], v["lng"], v.get("lastStopID"),
-                            v.get("nextStopID"), v.get("onSchedule"), v.get("load")))
+                            v.get("nextStopID"), v.get("onSchedule"), v.get("load"), v["receiveTime"] / 1000))
                 mem = seen.setdefault(vid, {"last": ps, "sched": {}})
                 if ps != mem["last"] and ps in mem["sched"]:
                     actual = datetime.fromtimestamp(v["receiveTime"] / 1000)
