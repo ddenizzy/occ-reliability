@@ -4,6 +4,7 @@
 # Usage: ./lockdown.sh occ-logger
 set -e
 [ -n "$1" ] || { echo "Usage: ./lockdown.sh occ-logger"; exit 1; }
-ssh -o StrictHostKeyChecking=accept-new root@"$1" 'tailscale status >/dev/null &&
-  ufw allow in on tailscale0 >/dev/null && ufw delete allow OpenSSH >/dev/null && ufw status verbose'
+U="${OCC_USER:-azureuser}"
+ssh -o StrictHostKeyChecking=accept-new "$U@$1" 'sudo tailscale status >/dev/null &&
+  sudo ufw allow in on tailscale0 >/dev/null && sudo ufw delete allow OpenSSH >/dev/null && sudo ufw status verbose'
 echo "Locked down. From now on use: ./fetch.sh $1"
