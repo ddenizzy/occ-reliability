@@ -18,6 +18,11 @@ on-time performance by route, hour, weekday and stop.
 - `analyze.py` turns the arrivals into `data/summary.json`: on-time %, late %, median and 90th-percentile delay,
   overall and per route / hour / weekday / stop, on-time performance when buses are crowded, bus bunching
   with the average rider wait (actual vs. what the timetable promises), and how many arrivals were GPS-refined.
+  Also: **where buses lose time** (actual minus timetable travel time between consecutive stops), **headway
+  regularity** per route (spread of the gaps and the *excess wait time* riders suffer, the London/TfL standard),
+  a **route × hour** on-time grid, and **weather** (rain / snow / freezing vs. dry, hourly data from Open-Meteo).
+- `report.py` turns `summary.json` into `data/report.html` and `data/report.pdf` with charts (plain SVG, no installs;
+  the PDF is printed by Google Chrome).
 - The logger runs on a small always-on server, so the data has no gaps when a laptop sleeps.
 
 ## Server setup (once)
@@ -35,7 +40,7 @@ on-time performance by route, hour, weekday and stop.
 
 ## Getting the data
 
-`./fetch.sh occ-logger` downloads a copy to `data/occ.sqlite`; then `python3 analyze.py`.
+`./fetch.sh occ-logger` downloads a copy to `data/occ.sqlite`; then `python3 analyze.py && python3 report.py`.
 
 ## Data
 
