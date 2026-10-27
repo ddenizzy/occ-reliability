@@ -13,6 +13,7 @@ from pathlib import Path
 DB = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).parent / "data" / "occ.sqlite"
 EARLY, LATE = -1.0, 5.0
 MIN_OBS = 20  # a route, hour or stop needs this many arrivals before it is ranked
+OFF_TRIP = 30  # minutes: further off the timetable than this, the feed has the bus on the wrong trip
 AT_STOP = 35  # metres: a bus this close to a stop is at it
 NEAR = 150    # metres: a GPS track passing farther than this from the stop is not trusted for refining
 
@@ -61,7 +62,7 @@ def refine_arrivals(db):
         times[vehicle] = [p[0] for p in pts]
     out = {}
     for rowid, vehicle, route, stop, actual in db.execute(
-            "SELECT rowid, vehicle, route_id, stop_id, actual FROM arrivals WHERE abs(delay_min) <= 60").fetchall():
+            "SELECT rowid, vehicle, route_id, stop_id, actual FROM arrivals WHERE abs(delay_min) <= ?", (OFF_TRIP,)).fetchall():
         if (stop, route) not in stops or vehicle not in track:
             continue
         slat, slng = stops[(stop, route)]
@@ -204,10 +205,11 @@ def main():
     db.row_factory = sqlite3.Row
     route_name = {r["id"]: r["name"] for r in db.execute("SELECT id, name FROM routes")}
     stop_name = {r["id"]: r["name"] for r in db.execute("SELECT id, name FROM stops")}
-    # an arrival more than an hour off its timetable is a matching error, not a late bus
+    # more than OFF_TRIP minutes off the timetable = the feed has the bus on the wrong trip, not a late bus
     precise = refine_arrivals(db)
+    off_trip = db.execute("SELECT count(*) FROM arrivals WHERE abs(delay_min) > ?", (OFF_TRIP,)).fetchone()[0]
     rows = []
-    for r in db.execute("SELECT rowid, * FROM arrivals WHERE abs(delay_min) <= 60"):
+    for r in db.execute("SELECT rowid, * FROM arrivals WHERE abs(delay_min) <= ?", (OFF_TRIP,)):
         scheduled = datetime.fromisoformat(r["scheduled"])
         actual = precise.get(r["rowid"]) or datetime.fromisoformat(r["actual"])
         rows.append({"route": r["route_id"], "stop": r["stop_id"], "vehicle": r["vehicle"], "block": r["block"],
@@ -225,6 +227,9 @@ def main():
         "buses_seen": len({r["vehicle"] for r in rows}),
         "routes_seen": len({r["route"] for r in rows}),
         "definition": f"on time = {abs(EARLY):g} min early to {LATE:g} min late",
+        "left_out": {"arrivals": off_trip, "pct": pct(off_trip, off_trip + len(rows)),
+                     "note": f"more than {OFF_TRIP} min off the timetable: the live feed had the bus on an earlier "
+                             "trip (it says so itself, then snaps back), so these are left out"},
         "overall": stats([r["delay"] for r in rows]),
         "by_route": sorted(({"route": route_name.get(k, str(k)), **stats(v)}
                             for k, v in grouped(rows, lambda r: r["route"]).items() if len(v) >= MIN_OBS),

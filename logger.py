@@ -18,6 +18,7 @@ from pathlib import Path
 BASE = "https://binghamtonupublic.etaspot.net/service.php"
 POLL = 30            # seconds between reads; gentle on a public feed
 STALE = 180          # a bus whose GPS report is older than this is ignored ("ghost" buses at night)
+SCHED_FRESH = 600    # a timetable time counts only if the stop was listed ahead within this many seconds
 DB = Path(__file__).parent / "data" / "occ.sqlite"
 
 SCHEMA = """
@@ -84,9 +85,12 @@ def main():
                            (int(now), v["routeID"], vid, v["lat"], v["lng"], v.get("lastStopID"),
                             v.get("nextStopID"), v.get("onSchedule"), v.get("load"), v["receiveTime"] / 1000))
                 mem = seen.setdefault(vid, {"last": ps, "sched": {}})
-                if ps != mem["last"] and ps in mem["sched"]:
+                # a timetable time is used once, and only if the stop was still listed ahead in the last few
+                # minutes: on loop routes a time left over from an earlier lap would read as an hour late
+                sched_text, seen_at = mem["sched"].pop(ps, (None, 0)) if ps != mem["last"] else (None, 0)
+                if sched_text and now - seen_at <= SCHED_FRESH:
                     actual = datetime.fromtimestamp(v["receiveTime"] / 1000)
-                    sched = clock_near(mem["sched"][ps], actual)
+                    sched = clock_near(sched_text, actual)
                     if sched:
                         db.execute("INSERT OR IGNORE INTO arrivals VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
                                    (int(now), actual.strftime("%Y-%m-%d"), v["routeID"], v.get("directionAbbr"), vid,
@@ -96,7 +100,7 @@ def main():
                 mem["last"] = ps
                 for s in v.get("minutesToNextStops") or []:   # remember the timetable time of every stop ahead
                     if s.get("schedule"):
-                        mem["sched"][s["patternStopID"]] = s["schedule"]
+                        mem["sched"][s["patternStopID"]] = (s["schedule"], now)
             db.commit()
         except Exception as e:  # network hiccup or feed change: note it and keep going
             print(datetime.now().isoformat(timespec="seconds"), "error:", repr(e)[:200], flush=True)

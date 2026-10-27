@@ -15,6 +15,10 @@ on-time performance by route, hour, weekday and stop.
   late, so `analyze.py` finds where the bus's path enters a 35 m circle around the stop (or its closest pass) and
   interpolates between the two GPS reports on either side. Each position is stored with the bus's own GPS time.
   The timetable itself is in whole minutes, so this is far more precise than the on-time window needs.
+- Each timetable time is used once, and only if the stop was still listed ahead of the bus in the last 10 minutes,
+  so on loop routes a time left over from an earlier lap can't turn into a fake hour-late arrival.
+- Arrivals more than 30 min off the timetable are left out (and counted): the live feed sometimes keeps a bus on
+  an earlier trip for a lap (its own on-schedule field says so), then snaps back. About 0.7% on the first day.
 - `analyze.py` turns the arrivals into `data/summary.json`: on-time %, late %, median and 90th-percentile delay,
   overall and per route / hour / weekday / stop, on-time performance when buses are crowded, bus bunching
   with the average rider wait (actual vs. what the timetable promises), and how many arrivals were GPS-refined.

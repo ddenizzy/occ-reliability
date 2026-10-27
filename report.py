@@ -118,7 +118,8 @@ break-inside:avoid}}th,td{{padding:3px 6px;border-bottom:1px solid #eee;text-ali
 <div><b>{fmt(o["median_delay_min"], " min")}</b>median delay</div><div><b>{fmt(hw.get("excess_wait_min"), " min")}</b>
 extra wait per rider</div></div>
 <p class=small>{esc(s["definition"])}. Arrival times are refined from the GPS track for
-{fmt(s.get("timing", {}).get("refined_from_gps_pct"), "%")} of arrivals.</p>
+{fmt(s.get("timing", {}).get("refined_from_gps_pct"), "%")} of arrivals. Left out: {s.get("left_out", {}).get("arrivals", 0)}
+arrivals ({fmt(s.get("left_out", {}).get("pct"), "%")}), {esc(s.get("left_out", {}).get("note", ""))}.</p>
 
 <h2>On time by route</h2>{stacked_bars(s["by_route"], "route") if s["by_route"] else "<p class=small>No route has enough arrivals yet.</p>"}
 <h2>By hour of day</h2>{hour_chart(s["by_hour"])}
